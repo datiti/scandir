@@ -43,7 +43,7 @@ static void compute_md5(char * filename) {
 
     if (inFile == NULL) {
         printf ("%s can't be opened.\n", filename);
-        return 0;
+        return;
     }
 
     MD5_Init (&mdContext);
@@ -224,7 +224,7 @@ int main(int argc, char *argv[]) {
     long realstart = currentTimeMillis();
 
     long a = currentTimeMillis();
-    compute_md5("main.c");
+    compute_md5("main.c"); 
     printf("md5 duration: %ld ms\n", (currentTimeMillis()-a));
 
     long begin_time = currentTimeMillis();
