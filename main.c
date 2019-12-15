@@ -13,21 +13,31 @@
 #define handle_error_en(en, msg) do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
 #define handle_error(msg) do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
+// max allowed number of threads
 #define MAX_NUM_THREADS 10
 
+// log name in syslog
 #define LOG_NAME "main"
 
-#define PORT 9090
+// default port for the internal monitoring rest server
+#define DEFAULT_PORT 9090
 
+/**
+ * struct used when creating thread. Used as argument to thread_start
+ */
 struct thread_info {    /* Used as argument to thread_start() */
     pthread_t thread_id;        /* ID returned by pthread_create() */
     int       thread_num;       /* Application-defined thread # */
     char     *thread_name;      /* Application-defined thread name */
-    long      value;
+    long      value;            /* Application-defined value data */
 };
 
+// control variable for pthread_once
 static pthread_once_t once_control = PTHREAD_ONCE_INIT;
-
+/**
+ * callback for pthread_once: called only once per the first thread that calls it.
+ * It then updates the once_control global variable.
+ */
 static void thread_call_once(){
     syslog(LOG_DEBUG, "pthread_once call");
 }
@@ -43,7 +53,10 @@ int callback_hello_world (const struct _u_request * request, struct _u_response 
     return U_CALLBACK_CONTINUE;
 }
 
-// Returns the elapsed time since the start of the program
+/**
+ * Callback function for the web application on /elapsed url call:
+ * Returns the elapsed time since the start of the program in json format
+ */
 int callback_elapsed (const struct _u_request * request, struct _u_response * response, void * user_data) {
     struct thread_info *tinfo = (struct thread_info *) user_data;
     long from = tinfo->value;
@@ -56,11 +69,15 @@ int callback_elapsed (const struct _u_request * request, struct _u_response * re
     return U_CALLBACK_CONTINUE;
 }
 
+/**
+ * Initialize the internal rest server for monitoring.
+ * Called by pthread_create
+ */
 static void * thread_start_internalweb(void * data) {
     struct thread_info *tinfo = (struct thread_info *) data;
     struct _u_instance instance;
     // Initialize instance with the port number
-    if (ulfius_init_instance(&instance, PORT, NULL, NULL) != U_OK) {
+    if (ulfius_init_instance(&instance, DEFAULT_PORT, NULL, NULL) != U_OK) {
         fprintf(stderr, "Error ulfius_init_instance, abort\n");
         return 0;
     }
@@ -100,6 +117,7 @@ static void * thread_start(void * data) {
 	return 0; 
 } 
 
+// display current timestamp in the format: Sun 2019-12-15 20:27:43 CET
 void displayts() {
     time_t     now;
     struct tm  ts;
@@ -122,6 +140,7 @@ static long currentTimeMillis() {
   return time.tv_sec * 1000 + time.tv_usec / 1000;
 }
 
+// the file filter callback applied on each file by scandir function
 int filefilter(const struct dirent *dir) {
     printf("%s\n", dir->d_name);
     printf("\t%d\n", dir->d_type);
@@ -151,7 +170,7 @@ void read_dir(char * dirname) {
     syslog(LOG_DEBUG, "readdir size: %ld\n", count);
 }
 
-// display content of a directory from scandir function
+// display content of a directory with scandir function: seems faster than readdir function
 void scan_dir(char * dirname) {
     struct dirent **namelist;
     int n = scandir(dirname, &namelist, filefilter, alphasort);
@@ -167,8 +186,20 @@ void scan_dir(char * dirname) {
     syslog(LOG_DEBUG, "scandir size: %d\n", n);
 }
 
-int main() {
+// Affiche l'aide du programme
+void print_help(char * prgName) {
+    printf("%s\n", prgName);
+    printf(" Displays the content of a directory\n");
+    printf(" Usage:\n");
+    printf(" %s <opt> <directory_name> \n", prgName);
+    printf(" where:\n");
+    printf(" <directory_name> is the name of directory to scan.\n");
+}
+
+// MAIN
+int main(int argc, char *argv[]) {
     long realstart = currentTimeMillis();
+
     long begin_time = currentTimeMillis();
     // initializing logging
     setlogmask (LOG_UPTO (LOG_DEBUG)); // log any message
