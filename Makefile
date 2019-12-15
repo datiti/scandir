@@ -1,13 +1,13 @@
 #
 # 
-# Required Ubuntu packages: libulfius-dev libmicrohttpd-dev
+# Required Ubuntu packages: libulfius-dev libmicrohttpd-dev libssl-dev
 #
 CC=gcc
 CFLAGS=-D_REENTRANT
 # -pthread == -lpthread -D_REENTRANT
 # -lulfius for internal rest web server
 # -ljansson to manipulate json structure
-LDFLAGS=-pthread -lulfius -ljansson
+LDFLAGS=-pthread -lulfius -ljansson -lssl -lcrypto
 EXEC=main
 
 all: $(EXEC)

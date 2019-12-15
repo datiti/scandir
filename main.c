@@ -8,6 +8,7 @@
 #include <syslog.h>
 #include <errno.h>
 #include <ulfius.h>
+#include <openssl/md5.h>
 #include "main.h"
 
 #define handle_error_en(en, msg) do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
@@ -31,6 +32,28 @@ struct thread_info {    /* Used as argument to thread_start() */
     char     *thread_name;      /* Application-defined thread name */
     long      value;            /* Application-defined value data */
 };
+
+static void compute_md5(char * filename) {
+    unsigned char c[MD5_DIGEST_LENGTH];
+    int i;
+    FILE *inFile = fopen (filename, "rb");
+    MD5_CTX mdContext;
+    int bytes;
+    unsigned char data[1024];
+
+    if (inFile == NULL) {
+        printf ("%s can't be opened.\n", filename);
+        return 0;
+    }
+
+    MD5_Init (&mdContext);
+    while ((bytes = fread (data, 1, 1024, inFile)) != 0)
+        MD5_Update (&mdContext, data, bytes);
+    MD5_Final (c,&mdContext);
+    for(i = 0; i < MD5_DIGEST_LENGTH; i++) printf("%02x", c[i]);
+    printf (" %s\n", filename);
+    fclose (inFile);
+}
 
 // control variable for pthread_once
 static pthread_once_t once_control = PTHREAD_ONCE_INIT;
@@ -199,6 +222,10 @@ void print_help(char * prgName) {
 // MAIN
 int main(int argc, char *argv[]) {
     long realstart = currentTimeMillis();
+
+    long a = currentTimeMillis();
+    compute_md5("main.c");
+    printf("md5 duration: %ld ms\n", (currentTimeMillis()-a));
 
     long begin_time = currentTimeMillis();
     // initializing logging
